@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "apiUrl": "https://server.hoteliermanagement.app/api",
+  "tenantId": "TENANT_ID_FROM_HOTELIER",
+  "printerId": "PRINTER_ID_FROM_HOTELIER_PRINTER_SETTINGS",
+  "printerName": "WINDOWS_PRINTER_NAME_EXACTLY",
+  "businessName": "Hotelier",
+  "columns": 42,
+  "pollMs": 3000
+}

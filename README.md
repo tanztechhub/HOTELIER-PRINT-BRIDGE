@@ -1,71 +1,86 @@
 # HOTELIER print bridge
 
-A tiny background service the client installs **once per machine**. The
-HOTELIER web app sends raw ESC/POS to it over `http://127.0.0.1:47011`, and it
-spools those bytes to a printer **by name** through the OS print spooler.
+A tiny background service the client installs once per machine. The HOTELIER
+web app sends raw ESC/POS to it over `http://127.0.0.1:47011`, and it spools
+those bytes to a printer by name through the OS print spooler.
 
-Use it when the printer can't be reached directly from the browser — i.e. an
-old USB thermal printer that only works through its vendor driver. If the
-printer is Bluetooth or driverless, the web app's built-in WebUSB / Web
-Bluetooth path is simpler and this isn't needed.
+Use it when the printer cannot be reached directly from the browser, for
+example an old USB or LAN thermal printer that works through its Windows
+driver.
 
-Pure Node, **no native modules**:
+Pure Node, no native modules:
 
-- Windows — PowerShell `Get-Printer` to list, an inline C# `winspool`
-  P/Invoke to write RAW.
-- macOS / Linux — CUPS `lpstat` / `lp -o raw`.
+- Windows: PowerShell `Get-Printer` to list, an inline C# `winspool` P/Invoke
+  to write RAW.
+- macOS / Linux: CUPS `lpstat` / `lp -o raw`.
 
 ## API
 
 | Method & path | Body | Returns |
 |---|---|---|
-| `GET /` (or `/status`) | — | `{ ok, app, version, host }` |
-| `GET /printers` | — | `{ ok, default, printers: [{ name, default, status }] }` |
-| `POST /print` | `{ printer?: string, data: <base64 ESC/POS> }` | `{ ok, result }` / `{ ok:false, error }` |
+| `GET /` or `/status` | - | `{ ok, app, version, host, agent }` |
+| `GET /printers` | - | `{ ok, default, printers: [{ name, default, status }] }` |
+| `POST /print` | `{ printer?: string, data: <base64 ESC/POS> }` | `{ ok, result }` or `{ ok:false, error }` |
 
 Binds to `127.0.0.1` only. CORS is open and it answers Chrome's Private
-Network Access preflight, so an `https://` page is allowed to call it.
+Network Access preflight, so an HTTPS page is allowed to call loopback.
 
-## Run from source (needs Node installed)
+## Run from source
 
+```bat
+npm install
+npm start
 ```
-npm install          # only devDeps — the service itself has none
-npm start            # http://127.0.0.1:47011
-```
 
-Or on a client with Node already installed: drop this folder somewhere and
+Or on a client with Node already installed, drop this folder somewhere and
 double-click `start-bridge.bat`.
 
 ## Build the single-file executable
 
-```
+```bat
 npm install
-npm run build        # -> dist/hotelier-print-bridge.exe  (~90 MB, no Node needed on the target)
+npm run build
 ```
 
-Uses Node's built-in SEA (Single Executable Applications) — it's node.exe with
-the bundled script appended, so run it on the OS/arch you want to ship for
-(build on Windows for the .exe). Sign it before distribution or Windows
-SmartScreen will warn on first run.
+Output is `dist/hotelier-print-bridge.exe`.
 
-## Install on a client machine (Windows)
+## Install on a client machine
 
-1. Copy `hotelier-print-bridge.exe` to `%LOCALAPPDATA%\HotelierPrintBridge\`.
-2. Run `install.bat` from that folder (double-click). It:
-   - adds a Startup shortcut so the bridge launches at login,
-   - starts it now.
-3. In HOTELIER: **Settings → Receipt Printer → Connection type = Local print
-   bridge**, pick the printer from the list, done.
+1. Put `hotelier-print-bridge.exe` beside `install.bat`.
+2. Optional for automatic dispatch printing: put a completed
+   `agent-config.json` beside it too.
+3. Double-click `install.bat`.
+
+The installer copies files to `%LOCALAPPDATA%\HotelierPrintBridge`, adds a
+Startup shortcut, and starts the bridge immediately.
 
 `uninstall.bat` removes the Startup shortcut and stops the running bridge.
 
-Port can be overridden with the `HOTELIER_BRIDGE_PORT` env var (match it in the
-app's bridge URL).
+Port can be overridden with the `HOTELIER_BRIDGE_PORT` env var. Match it in the
+app's bridge URL.
+
+## Automatic dispatch print agent
+
+For a LAN printer hosted by a reliable restaurant PC, the bridge can also poll
+HOTELIER directly for queued dispatch slips and print them even when the
+browser tab is closed.
+
+1. Copy `agent-config.example.json` to `agent-config.json`.
+2. Fill:
+   - `apiUrl`: usually `https://server.hoteliermanagement.app/api`
+   - `tenantId`: the workspace tenant id
+   - `printerId`: the HOTELIER Printer row id configured as the store/default printer
+   - `printerName`: the exact Windows printer name from `Get-Printer`
+   - `businessName`: optional header on the dispatch slip
+3. Restart `hotelier-print-bridge.exe`.
+4. Open `http://127.0.0.1:47011/status`; `agent.enabled` should be `true`.
+
+Only dispatch slips are printed by the headless agent in this version. Receipts
+can still use the normal browser relay or local bridge flow.
 
 ## Notes
 
-- First time the app calls the bridge, Chrome may show a one-off "… wants to
-  access devices on your local network" prompt — that's Private Network
-  Access. Allow it.
-- The console window must stay open (Startup keeps it running in the
-  background; minimise it). Closing it stops printing.
+- First time the app calls the bridge, Chrome may show a one-off local network
+  access prompt. Allow it.
+- The bridge must be running on the host PC. Startup starts it at login;
+  closing it stops browser bridge printing and the headless dispatch agent.

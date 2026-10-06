@@ -20,10 +20,12 @@
 const http = require('node:http');
 const os = require('node:os');
 const { listPrinters, printRaw } = require('./printers');
+const { startPrintAgent } = require('./agent');
 
 const PORT = Number(process.env.HOTELIER_BRIDGE_PORT || 47011);
-const VERSION = '1.0.0'; // keep in sync with package.json (inlined so SEA builds don't need the file)
+const VERSION = '1.1.0'; // keep in sync with package.json (inlined so SEA builds don't need the file)
 const MAX_BODY = 8 * 1024 * 1024;
+const agent = startPrintAgent();
 
 function setCors(req, res) {
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
@@ -53,7 +55,7 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (req.method === 'GET' && (path === '/' || path === '/status')) {
-      send(res, 200, { ok: true, app: 'hotelier-print-bridge', version: VERSION, host: os.hostname() });
+      send(res, 200, { ok: true, app: 'hotelier-print-bridge', version: VERSION, host: os.hostname(), agent: agent.status() });
       return;
     }
 
