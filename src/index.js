@@ -21,10 +21,16 @@ const http = require('node:http');
 const os = require('node:os');
 const { listPrinters, printRaw } = require('./printers');
 const { startPrintAgent } = require('./agent');
+const { selfInstallAndRelaunch } = require('./self-install');
 
 const PORT = Number(process.env.HOTELIER_BRIDGE_PORT || 47011);
-const VERSION = '1.1.0'; // keep in sync with package.json (inlined so SEA builds don't need the file)
+const VERSION = '1.1.1'; // keep in sync with package.json (inlined so SEA builds don't need the file)
 const MAX_BODY = 8 * 1024 * 1024;
+
+if (selfInstallAndRelaunch()) {
+  process.exit(0);
+}
+
 const agent = startPrintAgent();
 
 function setCors(req, res) {
