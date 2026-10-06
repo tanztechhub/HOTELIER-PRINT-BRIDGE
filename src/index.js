@@ -24,7 +24,7 @@ const { startPrintAgent } = require('./agent');
 const { selfInstallAndRelaunch } = require('./self-install');
 
 const PORT = Number(process.env.HOTELIER_BRIDGE_PORT || 47011);
-const VERSION = '1.1.1'; // keep in sync with package.json (inlined so SEA builds don't need the file)
+const VERSION = '1.1.2'; // keep in sync with package.json (inlined so SEA builds don't need the file)
 const MAX_BODY = 8 * 1024 * 1024;
 
 if (selfInstallAndRelaunch()) {

@@ -4,7 +4,8 @@ const path = require('node:path');
 const { spawnSync, spawn } = require('node:child_process');
 
 function isWindowsExe() {
-  return process.platform === 'win32' && path.basename(process.execPath).toLowerCase() === 'hotelier-print-bridge.exe';
+  const name = path.basename(process.execPath).toLowerCase();
+  return process.platform === 'win32' && name.startsWith('hotelier-print-bridge') && name.endsWith('.exe');
 }
 
 function appDir() {
