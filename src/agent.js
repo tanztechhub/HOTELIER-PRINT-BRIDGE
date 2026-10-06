@@ -7,7 +7,11 @@ const { buildDispatchSlipBytes } = require('./dispatch-slip');
 const DEFAULT_POLL_MS = 3000;
 
 function configPath() {
-  return process.env.HOTELIER_AGENT_CONFIG || path.join(process.cwd(), 'agent-config.json');
+  if (process.env.HOTELIER_AGENT_CONFIG) return process.env.HOTELIER_AGENT_CONFIG;
+  if (process.platform === 'win32') {
+    return path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'HotelierPrintBridge', 'agent-config.json');
+  }
+  return path.join(path.dirname(process.execPath), 'agent-config.json');
 }
 
 function loadAgentConfig() {
@@ -58,11 +62,11 @@ function startPrintAgent() {
   const cfg = loadAgentConfig();
   if (!cfg.enabled) {
     console.log('[agent] disabled');
-    return { enabled: false, status: () => ({ enabled: false }) };
+    return { enabled: false, status: () => ({ enabled: false, configPath: configPath() }) };
   }
   if (!cfg.apiUrl || !cfg.tenantId || !cfg.printerId || !cfg.printerName) {
     console.log('[agent] disabled - configure apiUrl, tenantId, printerId and printerName in agent-config.json');
-    return { enabled: false, status: () => ({ enabled: false, error: 'Missing agent config' }) };
+    return { enabled: false, status: () => ({ enabled: false, configPath: configPath(), error: 'Missing agent config' }) };
   }
 
   const state = { running: false, lastOkAt: null, lastError: null, printed: 0, failed: 0 };
@@ -90,7 +94,7 @@ function startPrintAgent() {
   void tick();
   return {
     enabled: true,
-    status: () => ({ enabled: true, printerId: cfg.printerId, printerName: cfg.printerName, ...state }),
+    status: () => ({ enabled: true, configPath: configPath(), printerId: cfg.printerId, printerName: cfg.printerName, ...state }),
     stop: () => clearInterval(timer),
   };
 }
