@@ -17,7 +17,11 @@ function loadAgentConfig() {
   const file = configPath();
   let fromFile = {};
   if (fs.existsSync(file)) {
-    fromFile = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const contents = fs.readFileSync(file);
+    const text = contents[0] === 0xff && contents[1] === 0xfe
+      ? contents.subarray(2).toString('utf16le')
+      : contents.toString('utf8');
+    fromFile = JSON.parse(text.replace(/^\uFEFF/, '').trim());
   }
   const cfg = {
     enabled: envBool('HOTELIER_AGENT_ENABLED', fromFile.enabled ?? false),
@@ -58,7 +62,14 @@ async function api(cfg, pathName, init = {}) {
 }
 
 function startPrintAgent() {
-  const cfg = loadAgentConfig();
+  let cfg;
+  try {
+    cfg = loadAgentConfig();
+  } catch (error) {
+    const message = `Cannot read agent config: ${error.message}`;
+    console.error(`[agent] ${message}`);
+    return { enabled: false, status: () => ({ enabled: false, configPath: configPath(), lastError: message }) };
+  }
   if (!cfg.enabled) {
     console.log('[agent] disabled');
     return { enabled: false, status: () => ({ enabled: false, configPath: configPath() }) };
