@@ -53,26 +53,45 @@ function buildDispatchSlipBytes(slip, options = {}) {
   }
 
   bold(bytes, true);
+  bytes.push(GS, 0x21, 0x11);
+  line(bytes, center(slip.kind === 'UPDATED_ORDER' ? 'UPDATED ORDER' : 'NEW ORDER', Math.floor(cols / 2)));
+  bytes.push(GS, 0x21, 0x00);
   line(bytes, center('STORE DISPATCH REQUEST', cols));
   bold(bytes, false);
   line(bytes, rule);
   line(bytes, `Request:  ${slip.requestNo}`);
   line(bytes, `Order:    #${slip.orderNumber}${slip.table ? ` (${slip.table})` : ''}`);
-  if (slip.rungUpBy) line(bytes, `Rung up by: ${slip.rungUpBy}`);
   line(bytes, `For:      ${slip.to}`);
   line(bytes, `From:     ${slip.from}`);
-  if (slip.requestedByName) line(bytes, `By:       ${slip.requestedByName}`);
-  line(bytes, `Time:     ${new Date(slip.requestedAt).toLocaleString('en-KE')}`);
+  if (slip.waiterName || slip.requestedByName) line(bytes, `Waiter:   ${slip.waiterName || slip.requestedByName}`);
+  line(bytes, `Time:     ${new Date(slip.requestedAt).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })}`);
   line(bytes, rule);
 
-  for (const dish of slip.dishes || []) {
+  const section = (title, dishes) => {
+  if (!dishes?.length) return;
+  line(bytes, rule);
+  bold(bytes, true);
+  line(bytes, center(title, cols));
+  bold(bytes, false);
+  line(bytes, rule);
+  for (const dish of dishes) {
     bold(bytes, true);
-    for (const l of wrap(`${qtyText(dish.quantity)} x ${dish.name}`, cols)) line(bytes, l);
+    bytes.push(GS, 0x21, 0x01);
+    const price = dish.totalPrice == null ? '' : `KSh ${Number(dish.totalPrice).toFixed(2)}`;
+    const names = wrap(`${qtyText(dish.quantity)} x ${dish.name}`.toUpperCase(), Math.max(10, cols - price.length - 1));
+    names.forEach((name, i) => line(bytes, i === 0 && price ? name.padEnd(cols - price.length) + price : name));
+    bytes.push(GS, 0x21, 0x00);
     bold(bytes, false);
     for (const ing of dish.ingredients || []) {
-      for (const l of wrap(`   ${ing.name}  ${qtyText(ing.quantity)} ${ing.unit || ''}`.trimEnd(), cols)) line(bytes, l);
+      const amount = `${qtyText(ing.quantity)} ${ing.unit || ''}`.trim();
+      const names = wrap(ing.name, Math.max(8, cols - amount.length - 1));
+      names.forEach((name, i) => line(bytes, i === 0 ? name.padEnd(cols - amount.length) + amount : name));
+      line(bytes, '.'.repeat(cols));
     }
   }
+  };
+  section('ALREADY ON ORDER', slip.existingDishes);
+  section(slip.kind === 'UPDATED_ORDER' ? 'UPDATED ITEMS TO DISPATCH' : 'ITEMS TO DISPATCH', slip.dishes);
 
   line(bytes, rule);
   if (slip.note) {
@@ -80,7 +99,6 @@ function buildDispatchSlipBytes(slip, options = {}) {
     line(bytes, rule);
   }
   line(bytes);
-  line(bytes, 'Dispatched by: ______________');
   line(bytes);
   line(bytes, 'Received by:   ______________');
   line(bytes);
