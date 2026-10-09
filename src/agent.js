@@ -2,7 +2,6 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { printRaw } = require('./printers');
-const { buildDispatchSlipBytes } = require('./dispatch-slip');
 
 const DEFAULT_POLL_MS = 3000;
 
@@ -100,16 +99,16 @@ function startPrintAgent() {
 }
 
 async function handleJob(cfg, state, job) {
-  const claimed = await api(cfg, `/pos/print-jobs/${job.id}/claim`, { method: 'POST', body: '{}' }).catch(() => null);
+  const claimed = await api(cfg, `/pos/print-jobs/${job.id}/claim`, { method: 'POST', body: JSON.stringify({ columns: cfg.columns }) }).catch(() => null);
   if (!claimed || !claimed.job) return;
   try {
     if (claimed.job.kind !== 'DISPATCH') {
       throw new Error(`Print agent supports dispatch slips only; got ${claimed.job.kind}`);
     }
-    if (!claimed.slip) throw new Error('Dispatch slip data was not returned');
-    const bytes = buildDispatchSlipBytes(claimed.slip, { columns: cfg.columns, businessName: cfg.businessName });
+    if (!claimed.data) throw new Error('HOTELIER did not return print bytes; update the server');
+    const bytes = Buffer.from(claimed.data, 'base64');
     const result = await printRaw(cfg.printerName, bytes);
-    console.log(`[agent] printed ${claimed.slip.requestNo} on "${cfg.printerName}": ${result}`);
+    console.log(`[agent] printed job ${job.id} on "${cfg.printerName}": ${result}`);
     await api(cfg, `/pos/print-jobs/${job.id}/complete`, { method: 'POST', body: '{}' });
     state.printed += 1;
   } catch (error) {

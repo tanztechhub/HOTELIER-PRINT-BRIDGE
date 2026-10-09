@@ -71,12 +71,18 @@ browser tab is closed.
    - `tenantId`: the workspace tenant id
    - `printerId`: the HOTELIER Printer row id configured as the store/default printer
    - `printerName`: the exact Windows printer name from `Get-Printer`
-   - `businessName`: optional header on the dispatch slip
+   - `columns`: printer character width (defaults to 42)
 3. Restart `hotelier-print-bridge.exe`.
 4. Open `http://127.0.0.1:47011/status`; `agent.enabled` should be `true`.
 
 Only dispatch slips are printed by the headless agent in this version. Receipts
 can still use the normal browser relay or local bridge flow.
+
+From v1.2.0, the agent receives base64 printer bytes from HOTELIER and spools
+them unchanged. Receipt designs, business names, prices, and time formatting
+live in HOTELIER, not in this installer. Existing v1.1.x installations need
+one upgrade to v1.2.0; subsequent layout changes require only HOTELIER updates.
+Deploy the updated HOTELIER backend before installing v1.2.0.
 
 ## Notes
 
