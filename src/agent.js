@@ -113,8 +113,9 @@ async function handleJob(cfg, state, job) {
   const claimed = await api(cfg, `/pos/print-jobs/${job.id}/claim`, { method: 'POST', body: JSON.stringify({ columns: cfg.columns }) }).catch(() => null);
   if (!claimed || !claimed.job) return;
   try {
-    if (claimed.job.kind !== 'DISPATCH') {
-      throw new Error(`Print agent supports dispatch slips only; got ${claimed.job.kind}`);
+    // Store dispatch slips and counter order tickets arrive as finished bytes; receipts are printed by the browser.
+    if (claimed.job.kind !== 'DISPATCH' && claimed.job.kind !== 'ORDER_TICKET') {
+      throw new Error(`Print agent prints dispatch slips and order tickets only; got ${claimed.job.kind}`);
     }
     if (!claimed.data) throw new Error('HOTELIER did not return print bytes; update the server');
     const bytes = Buffer.from(claimed.data, 'base64');
