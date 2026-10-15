@@ -88,7 +88,7 @@ public static string Send(string printer, string file) {
 }
 '@
 $r = [HotelierBridge.Raw]::Send($env:HB_PRINTER, $env:HB_FILE)
-if ($r -notlike "OK*") { Write-Error $r } else { Write-Output $r }
+if ($r -notlike "OK*") { [Console]::Error.WriteLine($r); exit 1 } else { Write-Output $r }
 `.trim();
 
 async function printRaw(printerName, buffer) {
@@ -99,6 +99,13 @@ async function printRaw(printerName, buffer) {
       if (!printerName) throw new Error('No printer name provided.');
       const out = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', WIN_RAW_PS], {
         env: { ...process.env, HB_PRINTER: printerName, HB_FILE: tmp },
+      }).catch((err) => {
+        const msg = err.stderr.trim();
+        // 1801 = ERROR_INVALID_PRINTER_NAME
+        err.stderr = /OpenPrinter failed: 1801/.test(msg)
+          ? `Printer "${printerName}" is not installed on this computer. Pick one in Printer Settings.`
+          : msg || err.message;
+        throw err;
       });
       return out.trim();
     }
